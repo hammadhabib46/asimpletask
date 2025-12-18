@@ -17,6 +17,20 @@ export const createOrGetUser = mutation({
             return existingUser;
         }
 
+        // Check for pending user by email
+        const pendingUser = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", args.email))
+            .first();
+
+        if (pendingUser && pendingUser.clerkId.startsWith("pending_")) {
+            await ctx.db.patch(pendingUser._id, {
+                clerkId: args.clerkId,
+                name: args.name,
+            });
+            return await ctx.db.get(pendingUser._id);
+        }
+
         const userId = await ctx.db.insert("users", {
             clerkId: args.clerkId,
             email: args.email,
