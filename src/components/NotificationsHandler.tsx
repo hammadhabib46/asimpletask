@@ -32,9 +32,9 @@ export function NotificationsHandler() {
         }
     }, []);
 
-    // Handle Employee Notifications (New Assignments)
+    // Handle Employee/Admin Notifications (New Assignments)
     useEffect(() => {
-        if (!myTasks || !currentUser || currentUser.role !== "employee") return;
+        if (!myTasks || !currentUser) return;
 
         // Skip notification on initial load
         if (isFirstRun.current) {
