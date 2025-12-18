@@ -158,14 +158,9 @@ export default function TeamPage() {
                                         </TableCell>
                                         <TableCell>
                                             <span
-                                                className={`text-xs px-2 py-1 rounded-full ${member.clerkId.startsWith("pending_")
-                                                    ? "bg-yellow-100 text-yellow-700"
-                                                    : "bg-green-100 text-green-700"
-                                                    }`}
+                                                className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700"
                                             >
-                                                {member.clerkId.startsWith("pending_")
-                                                    ? "Invited"
-                                                    : "Active"}
+                                                Active
                                             </span>
                                         </TableCell>
                                         <TableCell className="text-right">
