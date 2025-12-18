@@ -78,6 +78,7 @@ export default function AdminDashboard() {
     const markDone = useMutation(api.tasks.markTaskDone);
     const markPending = useMutation(api.tasks.markTaskPending);
     const reassignTask = useMutation(api.tasks.assignTask);
+    const deleteTask = useMutation(api.tasks.deleteTask);
 
     // Calculate date range
     const dateRange = useMemo(() => {
@@ -626,8 +627,27 @@ export default function AdminDashboard() {
                                 )}
                             </div>
                         )}
-                        <div className="mt-4">
-                            <Button onClick={() => setDetailsModalOpen(false)} className="w-full bg-white text-black hover:bg-gray-200">
+                        <div className="mt-4 flex gap-3">
+                            <Button
+                                onClick={async () => {
+                                    if (!selectedTask) return;
+                                    if (confirm("Are you sure you want to delete this task? This action cannot be undone.")) {
+                                        try {
+                                            await deleteTask({ taskId: selectedTask._id });
+                                            toast.success("Task deleted successfully");
+                                            setDetailsModalOpen(false);
+                                        } catch (error) {
+                                            toast.error("Failed to delete task");
+                                            console.error(error);
+                                        }
+                                    }
+                                }}
+                                variant="destructive"
+                                className="flex-1"
+                            >
+                                Delete Task
+                            </Button>
+                            <Button onClick={() => setDetailsModalOpen(false)} className="flex-1 bg-white text-black hover:bg-gray-200">
                                 Close
                             </Button>
                         </div>

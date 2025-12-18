@@ -268,6 +268,18 @@ export const markTaskPending = mutation({
 export const deleteTask = mutation({
     args: { taskId: v.id("tasks") },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+            .first();
+
+        if (!user || user.role !== "admin") {
+            throw new Error("Unauthorized: Only admins can delete tasks");
+        }
+
         await ctx.db.delete(args.taskId);
     },
 });
