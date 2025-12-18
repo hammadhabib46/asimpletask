@@ -77,6 +77,7 @@ export default function AdminDashboard() {
     const createTask = useMutation(api.tasks.createTask);
     const markDone = useMutation(api.tasks.markTaskDone);
     const markPending = useMutation(api.tasks.markTaskPending);
+    const reassignTask = useMutation(api.tasks.assignTask);
 
     // Calculate date range
     const dateRange = useMemo(() => {
@@ -533,9 +534,46 @@ export default function AdminDashboard() {
                                         <span className="text-gray-500">Project:</span>
                                         <span className="text-gray-300">{projects?.find((p: any) => p._id === selectedTask.projectId)?.name ?? "Unknown"}</span>
                                     </div>
-                                    <div className="flex justify-between">
+                                    <div className="flex justify-between items-center">
                                         <span className="text-gray-500">Assigned To:</span>
-                                        <span className="text-gray-300">{selectedTask.assignedUser?.name ?? "Unassigned"}</span>
+                                        <div className="flex items-center gap-2">
+                                            <Select
+                                                value={selectedTask.assignedTo ?? "unassigned"}
+                                                onValueChange={async (value) => {
+                                                    try {
+                                                        await reassignTask({
+                                                            taskId: selectedTask._id,
+                                                            userId: value === "unassigned" ? undefined : (value as Id<"users">),
+                                                        });
+                                                        toast.success("Task reassigned successfully");
+                                                        // Update local state to reflect change immediately
+                                                        const newAssignee = value === "unassigned"
+                                                            ? null
+                                                            : teamMembers?.find(m => m._id === value);
+
+                                                        setSelectedTask({
+                                                            ...selectedTask,
+                                                            assignedTo: value === "unassigned" ? undefined : value,
+                                                            assignedUser: newAssignee
+                                                        });
+                                                    } catch (error) {
+                                                        toast.error("Failed to reassign task");
+                                                    }
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-7 text-xs bg-[#252525] border-white/10 text-white min-w-[120px]">
+                                                    <SelectValue placeholder="Unassigned" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-[#1C1C1C] border-white/10">
+                                                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                                                    {teamMembers?.map((member) => (
+                                                        <SelectItem key={member._id} value={member._id}>
+                                                            {member.name ?? member.email}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-500">Created:</span>
