@@ -114,9 +114,37 @@ export const getMyTasks = query({
         const enrichedTasks = await Promise.all(
             tasks.map(async (task) => {
                 const project = await ctx.db.get(task.projectId);
+                // Get Image URLs (Main Task)
+                let imageUrls: string[] = [];
+                if (task.images && task.images.length > 0) {
+                    const urls = await Promise.all(
+                        task.images.map(storageId => ctx.storage.getUrl(storageId))
+                    );
+                    imageUrls = urls.filter(u => u !== null) as string[];
+                }
+
+                // Enrich notes with Image URLs
+                const enrichedNotes = await Promise.all(
+                    (task.notes || []).map(async (note: any) => {
+                        let noteImageUrls: string[] = [];
+                        if (note.images && note.images.length > 0) {
+                            const urls = await Promise.all(
+                                note.images.map((storageId: string) => ctx.storage.getUrl(storageId))
+                            );
+                            noteImageUrls = urls.filter(u => u !== null) as string[];
+                        }
+                        return {
+                            ...note,
+                            imageUrls: noteImageUrls,
+                        };
+                    })
+                );
+
                 return {
                     ...task,
                     project,
+                    imageUrls,
+                    notes: enrichedNotes,
                 };
             })
         );
@@ -171,6 +199,7 @@ export const getAllTasksForAdmin = query({
             assignedUser?: any; // Keep for legacy display if needed
             assigneesList?: any[];
             imageUrls?: string[];
+            notes?: any[];
         }> = [];
 
         for (const project of projects) {
@@ -249,6 +278,23 @@ export const getAllTasksForAdmin = query({
                     imageUrls = urls.filter(u => u !== null) as string[];
                 }
 
+                // Enrich notes with Image URLs
+                const enrichedNotes = await Promise.all(
+                    (task.notes || []).map(async (note: any) => {
+                        let noteImageUrls: string[] = [];
+                        if (note.images && note.images.length > 0) {
+                            const urls = await Promise.all(
+                                note.images.map((storageId: string) => ctx.storage.getUrl(storageId))
+                            );
+                            noteImageUrls = urls.filter(u => u !== null) as string[];
+                        }
+                        return {
+                            ...note,
+                            imageUrls: noteImageUrls,
+                        };
+                    })
+                );
+
                 return {
                     ...task,
                     assignedUser, // Keep for backward compat
@@ -256,6 +302,7 @@ export const getAllTasksForAdmin = query({
                     createdByUser,
                     completedByUser,
                     imageUrls,
+                    notes: enrichedNotes,
                 };
             })
         );
@@ -311,6 +358,7 @@ export const markTaskDone = mutation({
         taskId: v.id("tasks"),
         completedBy: v.optional(v.id("users")),
         note: v.optional(v.string()),
+        images: v.optional(v.array(v.string())),
     },
     handler: async (ctx, args) => {
         const task = await ctx.db.get(args.taskId);
@@ -321,6 +369,7 @@ export const markTaskDone = mutation({
             userId: args.completedBy!,
             timestamp: Date.now(),
             type: "completion" as const,
+            images: args.images,
         } : null;
 
         const currentNotes = task.notes || [];

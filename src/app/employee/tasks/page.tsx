@@ -67,6 +67,9 @@ export default function EmployeeTasksPage() {
     const [reopenNote, setReopenNote] = useState("");
     const [isReopening, setIsReopening] = useState(false);
 
+    // Image Upload State
+    const [selectedImages, setSelectedImages] = useState<File[]>([]);
+
 
     const currentUser = useQuery(api.users.getCurrentUser, {
         clerkId: user?.id ?? undefined,
@@ -146,6 +149,17 @@ export default function EmployeeTasksPage() {
     const createTask = useMutation(api.tasks.createTask);
     const markDone = useMutation(api.tasks.markTaskDone);
     const markPending = useMutation(api.tasks.markTaskPending);
+    const generateUploadUrl = useMutation(api.uploads.generateUploadUrl);
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            setSelectedImages(prev => [...prev, ...Array.from(e.target.files!)]);
+        }
+    };
+
+    const removeImage = (index: number) => {
+        setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    };
 
     const handleCreateTask = async () => {
         if (!newTaskTitle.trim() || !newTaskProject || !currentUser) return;
@@ -187,15 +201,32 @@ export default function EmployeeTasksPage() {
 
         setIsCompleting(true);
         try {
+            // Upload images first
+            const imageStorageIds: string[] = [];
+            if (selectedImages.length > 0) {
+                for (const file of selectedImages) {
+                    const postUrl = await generateUploadUrl();
+                    const result = await fetch(postUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": file.type },
+                        body: file,
+                    });
+                    const { storageId } = await result.json();
+                    imageStorageIds.push(storageId);
+                }
+            }
+
             await markDone({
                 taskId: taskToComplete,
                 completedBy: currentUser._id,
                 note: completionNote.trim() || undefined,
+                images: imageStorageIds.length > 0 ? imageStorageIds : undefined,
             });
             toast.success("Task completed successfully");
             setCompletionModalOpen(false);
             setTaskToComplete(null);
             setCompletionNote("");
+            setSelectedImages([]);
         } catch (error: any) {
             console.error("Error completing task:", error);
             toast.error(error.message || "Failed to complete task");
@@ -523,6 +554,50 @@ export default function EmployeeTasksPage() {
                                     className="bg-[#252525] border-white/10 text-white placeholder:text-gray-500 min-h-[100px]"
                                 />
                             </div>
+
+                            {/* Image Upload for Completion */}
+                            <div className="space-y-2">
+                                <Label className="text-gray-300">Images (Paste or Select)</Label>
+                                <div
+                                    className="border-2 border-dashed border-white/10 rounded-lg p-4 text-center hover:bg-white/5 transition-colors cursor-pointer"
+                                    onClick={() => document.getElementById('completion-image-upload')?.click()}
+                                >
+                                    <input
+                                        type="file"
+                                        id="completion-image-upload"
+                                        className="hidden"
+                                        multiple
+                                        accept="image/*"
+                                        onChange={handleFileSelect}
+                                    />
+                                    <p className="text-sm text-gray-500">
+                                        Click to upload or press <kbd className="bg-white/10 px-1 rounded">Cmd/Ctrl + V</kbd> to paste
+                                    </p>
+                                </div>
+                                {selectedImages.length > 0 && (
+                                    <div className="grid grid-cols-4 gap-2 mt-2">
+                                        {selectedImages.map((file, index) => (
+                                            <div key={index} className="relative group aspect-square rounded-md overflow-hidden bg-black">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img
+                                                    src={URL.createObjectURL(file)}
+                                                    alt="preview"
+                                                    className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+                                                />
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        removeImage(index);
+                                                    }}
+                                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <Plus className="w-3 h-3 rotate-45" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             <div className="flex gap-3">
                                 <Button
                                     variant="outline"
@@ -640,6 +715,23 @@ export default function EmployeeTasksPage() {
                                                         {note.type === 'completion' ? 'COMPLETED' : note.type === 'reopen' ? 'REOPENED' : 'NOTE'}
                                                     </div>
                                                     <p className="text-sm text-gray-300">{note.content}</p>
+
+                                                    {/* Render Note Images */}
+                                                    {note.imageUrls && note.imageUrls.length > 0 && (
+                                                        <div className="flex flex-wrap gap-2 mt-2">
+                                                            {note.imageUrls.map((url: string, idx: number) => (
+                                                                <div key={idx} className="aspect-square w-16 h-16 rounded-md overflow-hidden bg-black/50 relative border border-white/10">
+                                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                    <img
+                                                                        src={url}
+                                                                        alt="Note attachment"
+                                                                        className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                                                        onClick={() => window.open(url, '_blank')}
+                                                                    />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>

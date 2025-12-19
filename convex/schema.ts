@@ -41,6 +41,7 @@ export default defineSchema({
       userId: v.id("users"),
       timestamp: v.number(),
       type: v.union(v.literal("completion"), v.literal("reopen"), v.literal("comment")),
+      images: v.optional(v.array(v.string())),
     }))),
   })
     .index("by_projectId", ["projectId"])
