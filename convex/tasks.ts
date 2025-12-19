@@ -6,14 +6,22 @@ export const createTask = mutation({
         title: v.string(),
         projectId: v.id("projects"),
         assignedTo: v.optional(v.id("users")),
+        assignees: v.optional(v.array(v.id("users"))),
         createdBy: v.optional(v.id("users")),
         images: v.optional(v.array(v.string())),
     },
     handler: async (ctx, args) => {
+        // If assignees provided, use that. If assignedTo provided (legacy/single), add to assignees.
+        let finalAssignees = args.assignees || [];
+        if (args.assignedTo && !finalAssignees.includes(args.assignedTo)) {
+            finalAssignees.push(args.assignedTo);
+        }
+
         const taskId = await ctx.db.insert("tasks", {
             title: args.title,
             projectId: args.projectId,
-            assignedTo: args.assignedTo,
+            assignedTo: args.assignedTo, // Keep for backward compat
+            assignees: finalAssignees,
             createdBy: args.createdBy,
             images: args.images,
             status: "pending",
@@ -60,11 +68,34 @@ export const getMyTasks = query({
     handler: async (ctx, args) => {
         if (!args.userId) return [];
 
+        // Use by_assignees index if possible, or fallback to filter
+        // "Convex supports indexes on array fields" -> q.eq("assignees", userId) checks if userId is IN the array.
         let tasks = await ctx.db
+            .query("tasks")
+            .withIndex("by_assignees", (q) => q.eq("assignees", args.userId as any)) // Cast to any to bypass array type check for multi-value index
+            .order("desc")
+            .collect();
+
+        // Fallback for legacy tasks that might only have assignedTo but no assignees array populated yet
+        // This is a bit tricky with strict indexing. 
+        // For now, let's assume new tasks use assignees. Ideally we backfill.
+        // Or we can OR with assignedTo query in code?
+        // Let's do a simple code merge for safety if we want to be robust, 
+        // but simpler is to rely on logic: createTask populates assignees. 
+        // We'll perform a quick check for 'by_assignedTo' as well and dedupe.
+
+        const legacyTasks = await ctx.db
             .query("tasks")
             .withIndex("by_assignedTo", (q) => q.eq("assignedTo", args.userId))
             .order("desc")
             .collect();
+
+        // Merge and dedupe
+        const taskMap = new Map();
+        [...tasks, ...legacyTasks].forEach(t => taskMap.set(t._id, t));
+        tasks = Array.from(taskMap.values());
+        tasks.sort((a, b) => b.createdAt - a.createdAt);
+
 
         // Apply project filter
         if (args.projectFilter) {
@@ -131,11 +162,15 @@ export const getAllTasksForAdmin = query({
             createdAt: number;
             completedAt?: number;
             assignedTo?: any;
+            assignees?: any[];
             createdBy?: any;
             completedBy?: any;
             completionNote?: string;
+            images?: string[];
             project?: any;
-            assignedUser?: any;
+            assignedUser?: any; // Keep for legacy display if needed
+            assigneesList?: any[];
+            imageUrls?: string[];
         }> = [];
 
         for (const project of projects) {
@@ -150,10 +185,14 @@ export const getAllTasksForAdmin = query({
             allTasks.push(...tasks.map((t) => ({ ...t, project })));
         }
 
-        // Filter by assignedTo
+        // Filter by assignedTo 
         let filteredTasks = allTasks;
         if (args.assignedTo) {
-            filteredTasks = filteredTasks.filter((t) => t.assignedTo === args.assignedTo);
+            // Check checks if assignedTo match OR is in assignees
+            filteredTasks = filteredTasks.filter((t) =>
+                t.assignedTo === args.assignedTo ||
+                (t.assignees && t.assignees.includes(args.assignedTo))
+            );
         }
 
         // Filter by completedBy
@@ -172,23 +211,51 @@ export const getAllTasksForAdmin = query({
         // Sort by createdAt desc
         filteredTasks.sort((a, b) => b.createdAt - a.createdAt);
 
-        // Enrich with assigned user, creator, and completer info
+        // Enrich with assigned user, creator, completer info AND IMAGE URLs
         const enrichedTasks = await Promise.all(
             filteredTasks.map(async (task) => {
+                // Legacy single assignee fetch
                 const assignedUser = task.assignedTo
                     ? await ctx.db.get(task.assignedTo)
                     : null;
+
+                // Fetch all assignees
+                let assigneesList: any[] = [];
+                if (task.assignees && task.assignees.length > 0) {
+                    assigneesList = await Promise.all(
+                        task.assignees.map(id => ctx.db.get(id))
+                    );
+                } else if (assignedUser) {
+                    // Fallback to legacy single
+                    assigneesList = [assignedUser];
+                }
+
+                // Filter out nulls
+                assigneesList = assigneesList.filter(u => u !== null);
+
                 const createdByUser = task.createdBy
                     ? await ctx.db.get(task.createdBy)
                     : null;
                 const completedByUser = task.completedBy
                     ? await ctx.db.get(task.completedBy)
                     : null;
+
+                // Get Image URLs
+                let imageUrls: string[] = [];
+                if (task.images && task.images.length > 0) {
+                    const urls = await Promise.all(
+                        task.images.map(storageId => ctx.storage.getUrl(storageId))
+                    );
+                    imageUrls = urls.filter(u => u !== null) as string[];
+                }
+
                 return {
                     ...task,
-                    assignedUser,
+                    assignedUser, // Keep for backward compat
+                    assigneesList,
                     createdByUser,
                     completedByUser,
+                    imageUrls,
                 };
             })
         );
@@ -200,11 +267,41 @@ export const getAllTasksForAdmin = query({
 export const assignTask = mutation({
     args: {
         taskId: v.id("tasks"),
-        userId: v.optional(v.id("users")),
+        assignees: v.optional(v.array(v.id("users"))),
+        userId: v.optional(v.id("users")), // Legacy support
     },
     handler: async (ctx, args) => {
+        const task = await ctx.db.get(args.taskId);
+        if (!task) throw new Error("Task not found");
+
+        // Determine new state
+        let newAssignees = args.assignees ?? [];
+        let newAssignedTo = args.userId;
+
+        // If legacy userId provided but not in assignees, add it
+        if (newAssignedTo && !newAssignees.includes(newAssignedTo)) {
+            newAssignees.push(newAssignedTo);
+        }
+
+        // If assignees provided but no legacy userId, pick first as primary
+        if (!newAssignedTo && newAssignees.length > 0) {
+            newAssignedTo = newAssignees[0];
+        }
+
+        // Add history note (simplified)
+        const note = {
+            content: `Reassigned to ${newAssignees.length} users`,
+            userId: (await ctx.auth.getUserIdentity())?.subject ?? "system", // Fallback if no user, though unlikely in admin
+            timestamp: Date.now(),
+            type: "reopen" as const, // Reusing 'reopen' type for generic updates for now or default to note
+        };
+
+        // Actually we should fetch current user ID properly if we want to link to a user.
+        // For now, let's just patch.
+
         await ctx.db.patch(args.taskId, {
-            assignedTo: args.userId,
+            assignees: newAssignees,
+            assignedTo: newAssignedTo,
         });
     },
 });

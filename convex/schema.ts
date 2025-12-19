@@ -28,6 +28,7 @@ export default defineSchema({
     title: v.string(),
     projectId: v.id("projects"),
     assignedTo: v.optional(v.id("users")),
+    assignees: v.optional(v.array(v.id("users"))),
     status: v.union(v.literal("pending"), v.literal("done")),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
@@ -44,5 +45,6 @@ export default defineSchema({
   })
     .index("by_projectId", ["projectId"])
     .index("by_assignedTo", ["assignedTo"])
+    .index("by_assignees", ["assignees"])
     .index("by_status", ["status"]),
 });
