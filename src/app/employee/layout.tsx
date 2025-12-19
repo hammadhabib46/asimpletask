@@ -47,7 +47,7 @@ export default function EmployeeLayout({
         <div className="min-h-screen flex flex-col">
             {/* Top Navigation */}
             <nav className="border-b border-border bg-background">
-                <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div className="w-full mx-auto px-4 h-16 flex items-center justify-between">
                     <Link href="/employee/tasks" className="font-semibold text-xl">
                         TaskFlow
                     </Link>
@@ -82,7 +82,7 @@ export default function EmployeeLayout({
 
             {/* Main Content */}
             <main className="flex-1 bg-background">
-                <div className="max-w-6xl mx-auto px-4 py-8">{children}</div>
+                <div className="w-full mx-auto px-4 py-8">{children}</div>
             </main>
         </div>
     );

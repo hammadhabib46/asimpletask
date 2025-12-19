@@ -48,7 +48,7 @@ export default function AdminLayout({
         <div className="min-h-screen flex flex-col">
             {/* Top Navigation */}
             <nav className="border-b border-border bg-background">
-                <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div className="w-full mx-auto px-4 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-8">
                         <Link href="/admin" className="font-semibold text-xl">
                             TaskFlow
@@ -74,7 +74,7 @@ export default function AdminLayout({
 
             {/* Main Content */}
             <main className="flex-1 bg-background">
-                <div className="max-w-6xl mx-auto px-4 py-8">{children}</div>
+                <div className="w-full mx-auto px-4 py-8">{children}</div>
             </main>
         </div>
     );
