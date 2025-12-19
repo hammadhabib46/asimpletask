@@ -34,6 +34,7 @@ export default defineSchema({
     completedBy: v.optional(v.id("users")),
     completionNote: v.optional(v.string()),
     createdBy: v.optional(v.id("users")),
+    images: v.optional(v.array(v.string())),
     notes: v.optional(v.array(v.object({
       content: v.string(),
       userId: v.id("users"),

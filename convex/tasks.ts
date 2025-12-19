@@ -7,6 +7,7 @@ export const createTask = mutation({
         projectId: v.id("projects"),
         assignedTo: v.optional(v.id("users")),
         createdBy: v.optional(v.id("users")),
+        images: v.optional(v.array(v.string())),
     },
     handler: async (ctx, args) => {
         const taskId = await ctx.db.insert("tasks", {
@@ -14,6 +15,7 @@ export const createTask = mutation({
             projectId: args.projectId,
             assignedTo: args.assignedTo,
             createdBy: args.createdBy,
+            images: args.images,
             status: "pending",
             createdAt: Date.now(),
         });

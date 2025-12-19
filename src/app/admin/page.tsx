@@ -44,6 +44,7 @@ export default function AdminDashboard() {
     const [newTaskTitle, setNewTaskTitle] = useState("");
     const [newTaskProject, setNewTaskProject] = useState<string>("");
     const [newTaskAssignee, setNewTaskAssignee] = useState<string>("unassigned");
+    const [selectedImages, setSelectedImages] = useState<File[]>([]);
     const [isCreating, setIsCreating] = useState(false);
 
     // Task completion modal state
@@ -79,6 +80,7 @@ export default function AdminDashboard() {
     const markPending = useMutation(api.tasks.markTaskPending);
     const reassignTask = useMutation(api.tasks.assignTask);
     const deleteTask = useMutation(api.tasks.deleteTask);
+    const generateUploadUrl = useMutation(api.files.generateUploadUrl);
 
     // Calculate date range
     const dateRange = useMemo(() => {
@@ -110,23 +112,67 @@ export default function AdminDashboard() {
 
         setIsCreating(true);
         try {
+            // Upload images first
+            const imageStorageIds: string[] = [];
+            if (selectedImages.length > 0) {
+                for (const file of selectedImages) {
+                    const postUrl = await generateUploadUrl();
+                    const result = await fetch(postUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": file.type },
+                        body: file,
+                    });
+                    const { storageId } = await result.json();
+                    imageStorageIds.push(storageId);
+                }
+            }
+
             await createTask({
                 title: newTaskTitle.trim(),
                 projectId: newTaskProject as Id<"projects">,
                 assignedTo: newTaskAssignee !== "unassigned" ? (newTaskAssignee as Id<"users">) : undefined,
                 createdBy: currentUser._id,
+                images: imageStorageIds.length > 0 ? imageStorageIds : undefined,
             });
             toast.success("Task created successfully");
             // Reset and close modal
             setNewTaskTitle("");
             setNewTaskProject("");
             setNewTaskAssignee("unassigned");
+            setSelectedImages([]);
             setIsModalOpen(false);
         } catch (error: any) {
             console.error("Error creating task:", error);
             toast.error(error.message || "Failed to create task");
         }
         setIsCreating(false);
+    };
+
+    const handlePaste = (e: React.ClipboardEvent) => {
+        const items = e.clipboardData.items;
+        const newImages: File[] = [];
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf("image") !== -1) {
+                const file = items[i].getAsFile();
+                if (file) newImages.push(file);
+            }
+        }
+
+        if (newImages.length > 0) {
+            setSelectedImages(prev => [...prev, ...newImages]);
+            toast.success(`Pasted ${newImages.length} image(s)`);
+        }
+    };
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            setSelectedImages(prev => [...prev, ...Array.from(e.target.files!)]);
+        }
+    };
+
+    const removeImage = (index: number) => {
+        setSelectedImages(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleToggleStatus = async (taskId: Id<"tasks">, currentStatus: string) => {
@@ -265,7 +311,7 @@ export default function AdminDashboard() {
                                             <Plus className="w-3 h-3 mr-1" /> Task
                                         </Button>
                                     </DialogTrigger>
-                                    <DialogContent className="bg-[#1C1C1C] border-white/10 text-white max-w-md">
+                                    <DialogContent className="bg-[#1C1C1C] border-white/10 text-white max-w-md" onPaste={handlePaste}>
                                         <DialogHeader>
                                             <DialogTitle className="text-xl font-bold">Create New Task</DialogTitle>
                                         </DialogHeader>
@@ -315,6 +361,52 @@ export default function AdminDashboard() {
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
+                                            </div>
+
+                                            {/* Image Upload */}
+                                            <div className="space-y-2">
+                                                <Label className="text-gray-300">Images (Paste or Select)</Label>
+                                                <div
+                                                    className="border-2 border-dashed border-white/10 rounded-lg p-4 text-center hover:bg-white/5 transition-colors cursor-pointer"
+                                                    onPaste={handlePaste}
+                                                    onClick={() => document.getElementById('image-upload')?.click()}
+                                                >
+                                                    <input
+                                                        type="file"
+                                                        id="image-upload"
+                                                        className="hidden"
+                                                        multiple
+                                                        accept="image/*"
+                                                        onChange={handleFileSelect}
+                                                    />
+                                                    <p className="text-sm text-gray-500">
+                                                        Click to upload or press <kbd className="bg-white/10 px-1 rounded">Cmd/Ctrl + V</kbd> to paste
+                                                    </p>
+                                                </div>
+
+                                                {selectedImages.length > 0 && (
+                                                    <div className="grid grid-cols-4 gap-2 mt-2">
+                                                        {selectedImages.map((file, index) => (
+                                                            <div key={index} className="relative group aspect-square rounded-md overflow-hidden bg-black">
+                                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                <img
+                                                                    src={URL.createObjectURL(file)}
+                                                                    alt="preview"
+                                                                    className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+                                                                />
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        removeImage(index);
+                                                                    }}
+                                                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                >
+                                                                    <Plus className="w-3 h-3 rotate-45" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Create Button */}
