@@ -809,7 +809,66 @@ export default function AdminDashboard() {
                         </DialogContent>
                     </Dialog>
                 </div>
+
+                {/* Activity Feed Section */}
+                <div className="space-y-4">
+                    <div className="bg-[#1C1C1C] rounded-3xl p-6 border border-white/5 h-full">
+                        <h2 className="text-2xl font-bold text-white mb-6">Activity Feed</h2>
+                        <div className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar pr-2">
+                            {allTasks?.slice(0, 20).map((task) => (
+                                <div key={task._id} className="bg-[#252525] p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                                    <div className="flex justify-between items-start gap-2">
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium text-white line-clamp-2">{task.title}</p>
+                                            <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
+                                                <span className={`px-2 py-0.5 rounded-full ${task.status === 'done'
+                                                    ? 'bg-green-500/10 text-green-400'
+                                                    : 'bg-yellow-500/10 text-yellow-400'
+                                                    }`}>
+                                                    {task.status === 'done' ? 'Completed' : 'Pending'}
+                                                </span>
+                                                <span>•</span>
+                                                <span>{new Date(task.createdAt).toLocaleDateString()}</span>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between text-xs">
+                                        <div className="flex items-center gap-1 text-gray-400">
+                                            <span>To:</span>
+                                            <div className="flex -space-x-2">
+                                                {(task.assigneesList && task.assigneesList.length > 0) ? (
+                                                    task.assigneesList.slice(0, 3).map((u: any) => (
+                                                        <div key={u._id} className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center text-[8px] text-blue-300 border border-[#252525]">
+                                                            {u.name?.charAt(0) ?? "?"}
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-gray-500 italic">Unassigned</span>
+                                                )}
+                                                {task.assigneesList && task.assigneesList.length > 3 && (
+                                                    <div className="w-5 h-5 rounded-full bg-gray-500/20 flex items-center justify-center text-[8px] text-gray-300 border border-[#252525]">
+                                                        +{task.assigneesList.length - 3}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="text-gray-500">
+                                            {task.project?.name ?? "No Project"}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {(!allTasks || allTasks.length === 0) && (
+                                <div className="text-center py-8 text-gray-500 text-sm">
+                                    No recent activity
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
-        </TooltipProvider>
+        </div>
+        </TooltipProvider >
     );
 };
