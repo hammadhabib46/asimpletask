@@ -391,11 +391,11 @@ export default function EmployeeTasksPage() {
 
                             {/* Custom Table Implementation to match admin dashboard */}
                             <div className="w-full">
-                                <div className="grid grid-cols-12 gap-4 text-gray-400 text-sm font-medium mb-4 px-4">
-                                    <div className="col-span-1">Done</div>
-                                    <div className="col-span-5">Task</div>
-                                    <div className="col-span-3">Project</div>
-                                    <div className="col-span-3 text-right">Created</div>
+                                <div className="hidden md:flex items-center gap-4 text-gray-400 text-sm font-medium mb-4 px-4">
+                                    <div className="w-8 shrink-0">Done</div>
+                                    <div className="flex-1 min-w-0">Task</div>
+                                    <div className="w-32 shrink-0">Project</div>
+                                    <div className="w-24 shrink-0 text-right">Created</div>
                                 </div>
 
                                 <div className="space-y-2">
@@ -403,19 +403,28 @@ export default function EmployeeTasksPage() {
                                         tasks.map((task) => (
                                             <div
                                                 key={task._id}
-                                                className="grid grid-cols-12 gap-4 items-center bg-[#252525] hover:bg-[#2A2A2A] transition-colors p-4 rounded-xl text-sm group cursor-pointer"
+                                                className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 bg-[#252525] hover:bg-[#2A2A2A] transition-colors p-4 rounded-xl text-sm group cursor-pointer"
                                                 onClick={() => handleTaskClick(task)}
                                             >
-                                                <div className="col-span-1" onClick={(e) => e.stopPropagation()}>
-                                                    <Checkbox
-                                                        checked={task.status === "done"}
-                                                        onCheckedChange={() =>
-                                                            handleToggleStatus(task._id, task.status)
-                                                        }
-                                                        className="border-white/30 data-[state=checked]:bg-white data-[state=checked]:text-black"
-                                                    />
+                                                <div className="flex items-center gap-3 md:contents">
+                                                    <div className="w-8 shrink-0 flex items-center justify-start" onClick={(e) => e.stopPropagation()}>
+                                                        <Checkbox
+                                                            checked={task.status === "done"}
+                                                            onCheckedChange={() =>
+                                                                handleToggleStatus(task._id, task.status)
+                                                            }
+                                                            className="border-white/30 data-[state=checked]:bg-white data-[state=checked]:text-black"
+                                                        />
+                                                    </div>
+                                                    <div className="md:hidden flex-1 font-medium text-white truncate">
+                                                        {task.title}
+                                                    </div>
+                                                    <div className="md:hidden text-xs text-gray-400">
+                                                        {new Date(task.createdAt).toLocaleDateString()}
+                                                    </div>
                                                 </div>
-                                                <div className="col-span-5 flex items-center gap-2 overflow-hidden">
+
+                                                <div className="hidden md:flex flex-1 min-w-0 items-center gap-2 overflow-hidden">
                                                     <span
                                                         className={`font-medium truncate ${task.status === "done"
                                                             ? "line-through text-gray-500"
@@ -435,15 +444,20 @@ export default function EmployeeTasksPage() {
                                                         </Tooltip>
                                                     )}
                                                 </div>
-                                                <div className="col-span-3 text-gray-400 text-xs truncate">
+                                                <div className="hidden md:block w-32 shrink-0 text-gray-400 text-xs truncate">
                                                     {task.project?.name ?? "—"}
                                                 </div>
-                                                <div className="col-span-3 text-right text-gray-400">
-                                                    {new Date(task.createdAt).toLocaleDateString(undefined, {
-                                                        day: 'numeric',
-                                                        month: 'numeric',
-                                                        year: 'numeric'
-                                                    })}
+                                                <div className="pl-11 md:pl-0 flex justify-between md:block w-full md:w-24 md:shrink-0 md:text-right text-gray-400">
+                                                    <span className="md:hidden text-xs">
+                                                        {task.project?.name ?? "—"}
+                                                    </span>
+                                                    <span>
+                                                        {new Date(task.createdAt).toLocaleDateString(undefined, {
+                                                            day: 'numeric',
+                                                            month: 'numeric',
+                                                            year: 'numeric'
+                                                        })}
+                                                    </span>
                                                 </div>
                                             </div>
                                         ))
