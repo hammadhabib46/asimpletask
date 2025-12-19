@@ -80,7 +80,7 @@ export default function AdminDashboard() {
     const markPending = useMutation(api.tasks.markTaskPending);
     const reassignTask = useMutation(api.tasks.assignTask);
     const deleteTask = useMutation(api.tasks.deleteTask);
-    const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+    const generateUploadUrl = useMutation(api.uploads.generateUploadUrl);
 
     // Calculate date range
     const dateRange = useMemo(() => {

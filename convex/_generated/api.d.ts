@@ -8,10 +8,10 @@
  * @module
  */
 
-import type * as files from "../files.js";
 import type * as projects from "../projects.js";
 import type * as tasks from "../tasks.js";
 import type * as teams from "../teams.js";
+import type * as uploads from "../uploads.js";
 import type * as users from "../users.js";
 import type * as verification from "../verification.js";
 
@@ -22,10 +22,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  files: typeof files;
   projects: typeof projects;
   tasks: typeof tasks;
   teams: typeof teams;
+  uploads: typeof uploads;
   users: typeof users;
   verification: typeof verification;
 }>;
