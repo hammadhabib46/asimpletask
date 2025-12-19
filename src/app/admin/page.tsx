@@ -523,352 +523,294 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {/* Recent Activity Section - Takes up 1 column */}
-                        <div className="lg:col-span-1">
-                            <div className="bg-[#1C1C1C] rounded-3xl p-6 border border-white/5 h-full min-h-[400px]">
-                                <h2 className="text-2xl font-bold text-white mb-1">Recent Activity</h2>
-                                <p className="text-gray-500 text-sm mb-6">Latest task updates across all projects</p>
-
-                                <div className="space-y-6 relative">
-                                    {/* Timeline line */}
-                                    <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-[#252525]" />
-
-                                    {allTasks && allTasks.slice(0, 5).map((task: any) => (
-                                        <div key={task._id} className="relative pl-8">
-                                            <div className={`absolute left-0 top-1.5 w-4 h-4 rounded-full border-2 border-[#1C1C1C] ${task.status === 'done' ? 'bg-white' : 'bg-gray-600'}`} />
-                                            <div className="text-sm text-white font-medium">{task.title}</div>
-                                            <div className="text-xs text-gray-500 mt-0.5">
-                                                {task.status === 'done' ? (
-                                                    <>
-                                                        Completed by {task.completedByUser?.name ?? task.completedByUser?.email?.split('@')[0] ?? 'Unknown'}
-                                                        {task.completionNote && (
-                                                            <span className="text-gray-400 italic"> — "{task.completionNote}"</span>
-                                                        )}
-                                                    </>
-                                                ) : (
-                                                    <>Created by {task.createdByUser?.name ?? task.createdByUser?.email?.split('@')[0] ?? 'Unknown'}</>
-                                                )}
-                                                {' • '}{new Date(task.status === 'done' && task.completedAt ? task.completedAt : task.createdAt).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                    ))}
-
-                                    {(!allTasks || allTasks.length === 0) && (
-                                        <div className="text-gray-500 text-sm pl-8">No activity yet</div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
                     </div>
-
-                    {/* Completion Note Modal */}
-                    <Dialog open={completionModalOpen} onOpenChange={setCompletionModalOpen}>
-                        <DialogContent className="bg-[#1C1C1C] border-white/10 text-white max-w-md">
-                            <DialogHeader>
-                                <DialogTitle className="text-xl font-bold">Complete Task</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4 mt-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="completion-note" className="text-gray-300">
-                                        Add a note (optional)
-                                    </Label>
-                                    <Textarea
-                                        id="completion-note"
-                                        placeholder="What did you accomplish?"
-                                        value={completionNote}
-                                        onChange={(e) => setCompletionNote(e.target.value)}
-                                        className="bg-[#252525] border-white/10 text-white placeholder:text-gray-500 min-h-[100px]"
-                                    />
-                                </div>
-                                <div className="flex gap-3">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setCompletionModalOpen(false)}
-                                        className="flex-1 border-white/20 text-white hover:bg-white/10 hover:text-white"
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        onClick={handleConfirmCompletion}
-                                        disabled={isCompleting}
-                                        className="flex-1 bg-white text-black hover:bg-gray-200"
-                                    >
-                                        {isCompleting ? "Completing..." : "Mark Complete"}
-                                    </Button>
-                                </div>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-
-                    {/* Reopen Note Modal */}
-                    <Dialog open={reopenModalOpen} onOpenChange={setReopenModalOpen}>
-                        <DialogContent className="bg-[#1C1C1C] border-white/10 text-white max-w-md">
-                            <DialogHeader>
-                                <DialogTitle className="text-xl font-bold">Reopen Task</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4 mt-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="reopen-note" className="text-gray-300">
-                                        Reason for reopening (optional)
-                                    </Label>
-                                    <Textarea
-                                        id="reopen-note"
-                                        placeholder="Why is this task being reopened?"
-                                        value={reopenNote}
-                                        onChange={(e) => setReopenNote(e.target.value)}
-                                        className="bg-[#252525] border-white/10 text-white placeholder:text-gray-500 min-h-[100px]"
-                                    />
-                                </div>
-                                <div className="flex gap-3">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setReopenModalOpen(false)}
-                                        className="flex-1 border-white/20 text-white hover:bg-white/10 hover:text-white"
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        onClick={handleConfirmReopen}
-                                        disabled={isReopening}
-                                        className="flex-1 bg-white text-black hover:bg-gray-200"
-                                    >
-                                        {isReopening ? "Reopening..." : "Reopen Task"}
-                                    </Button>
-                                </div>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-
-                    {/* Task Details Modal */}
-                    <Dialog open={detailsModalOpen} onOpenChange={setDetailsModalOpen}>
-                        <DialogContent className="bg-[#1C1C1C] border-white/10 text-white max-w-md">
-                            <DialogHeader>
-                                <DialogTitle className="text-xl font-bold">Task Details</DialogTitle>
-                            </DialogHeader>
-                            {selectedTask && (
-                                <div className="space-y-4 mt-4">
-                                    <div>
-                                        <h3 className="text-lg font-medium text-white">{selectedTask.title}</h3>
-                                        <p className="text-sm text-gray-400">
-                                            Status: {selectedTask.status === 'done' ? 'Completed' : 'Pending'}
-                                        </p>
-                                    </div>
-
-                                    <div className="space-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Project:</span>
-                                            <span className="text-gray-300">{projects?.find((p: any) => p._id === selectedTask.projectId)?.name ?? "Unknown"}</span>
-                                        </div>
-
-                                        <div className="flex flex-col gap-2">
-                                            <span className="text-gray-500">Assigned To:</span>
-                                            <div className="flex flex-wrap gap-2 items-center">
-                                                {(selectedTask.assigneesList && selectedTask.assigneesList.length > 0) ? (
-                                                    selectedTask.assigneesList.map((u: any) => (
-                                                        <div key={u._id} className="bg-white/10 px-2 py-1 rounded text-xs flex items-center gap-1">
-                                                            {u.name ?? u.email}
-                                                            <button
-                                                                onClick={async () => {
-                                                                    const newIds = selectedTask.assigneesList.filter((m: any) => m._id !== u._id).map((m: any) => m._id);
-                                                                    await reassignTask({ taskId: selectedTask._id, assignees: newIds });
-                                                                    // Optimistic update
-                                                                    setSelectedTask((prev: any) => ({
-                                                                        ...prev,
-                                                                        assigneesList: prev.assigneesList.filter((m: any) => m._id !== u._id),
-                                                                        assignedTo: newIds[0]
-                                                                    }));
-                                                                }}
-                                                                className="hover:text-red-400"
-                                                            >
-                                                                <Plus className="w-3 h-3 rotate-45" />
-                                                            </button>
-                                                        </div>
-                                                    ))
-                                                ) : <span className="text-gray-500 italic">Unassigned</span>}
-
-                                                <Select value="" onValueChange={async (val) => {
-                                                    const currentIds = selectedTask.assigneesList?.map((m: any) => m._id) || [];
-                                                    if (!currentIds.includes(val)) {
-                                                        const newIds = [...currentIds, val as Id<"users">];
-                                                        await reassignTask({ taskId: selectedTask._id, assignees: newIds });
-                                                        // Optimistic update
-                                                        const newMember = teamMembers?.find(m => m._id === val);
-                                                        setSelectedTask((prev: any) => ({
-                                                            ...prev,
-                                                            assigneesList: [...(prev.assigneesList || []), newMember],
-                                                            assignedTo: newIds[0]
-                                                        }));
-                                                    }
-                                                }}>
-                                                    <SelectTrigger className="h-6 text-xs bg-transparent border-white/20 hover:bg-white/5 w-6 px-0 justify-center">
-                                                        <Plus className="w-3 h-3" />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="bg-[#1C1C1C] border-white/10">
-                                                        {teamMembers?.map(m => (
-                                                            <SelectItem key={m._id} value={m._id} disabled={selectedTask.assigneesList?.some((u: any) => u._id === m._id)}>
-                                                                {m.name ?? m.email}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Created:</span>
-                                            <span className="text-gray-300">{new Date(selectedTask.createdAt).toLocaleDateString()}</span>
-                                        </div>
-
-                                        {selectedTask.status === 'done' && (
-                                            <>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-500">Completed By:</span>
-                                                    <span className="text-gray-300">{selectedTask.completedByUser?.name ?? "Unknown"}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-500">Completed At:</span>
-                                                    <span className="text-gray-300">{new Date(selectedTask.completedAt).toLocaleDateString()}</span>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-
-                                    {/* Image Grid */}
-                                    {selectedTask.imageUrls && selectedTask.imageUrls.length > 0 && (
-                                        <div className="space-y-2 mt-4 pt-4 border-t border-white/5">
-                                            <span className="text-sm text-gray-500 font-medium">Attachments</span>
-                                            <div className="grid grid-cols-3 gap-2">
-                                                {selectedTask.imageUrls.map((url: string, idx: number) => (
-                                                    <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-black/50 relative group border border-white/10">
-                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                        <img
-                                                            src={url}
-                                                            alt="Task attachment"
-                                                            className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                                            onClick={() => window.open(url, '_blank')}
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {selectedTask.completionNote && (
-                                        <div className="bg-[#252525] p-3 rounded-lg border border-white/5">
-                                            <p className="text-xs text-gray-500 mb-1 font-medium">COMPLETION NOTE</p>
-                                            <p className="text-sm text-gray-300 italic">"{selectedTask.completionNote}"</p>
-                                        </div>
-                                    )}
-
-                                    {/* Task History / Notes */}
-                                    {selectedTask.notes && selectedTask.notes.length > 0 && (
-                                        <div className="space-y-3 pt-4 border-t border-white/5">
-                                            <h4 className="text-sm font-medium text-white">History</h4>
-                                            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                                                {selectedTask.notes.slice().reverse().map((note: any, index: number) => (
-                                                    <div key={index} className="bg-[#252525] p-3 rounded-lg border border-white/5">
-                                                        <div className="flex justify-between items-start mb-1">
-                                                            <span className="text-xs font-semibold text-gray-300">
-                                                                {teamMembers?.find(m => m._id === note.userId)?.name ?? "User"}
-                                                            </span>
-                                                            <span className="text-[10px] text-gray-500">
-                                                                {new Date(note.timestamp).toLocaleString()}
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-xs text-gray-400 mb-1 font-medium uppercase tracking-wider">
-                                                            {note.type === 'completion' ? 'COMPLETED' : note.type === 'reopen' ? 'REOPENED' : 'NOTE'}
-                                                        </div>
-                                                        <p className="text-sm text-gray-300">{note.content}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="flex justify-end pt-4 border-t border-white/10">
-                                        <Button
-                                            variant="destructive"
-                                            onClick={async () => {
-                                                if (window.confirm("Are you sure you want to delete this task?")) {
-                                                    try {
-                                                        await deleteTask({ taskId: selectedTask._id });
-                                                        toast.success("Task deleted successfully");
-                                                        setDetailsModalOpen(false);
-                                                    } catch (error: any) {
-                                                        toast.error(error.message || "Failed to delete task");
-                                                    }
-                                                }
-                                            }}
-                                            className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border-none w-full"
-                                        >
-                                            Delete Task
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
-                        </DialogContent>
-                    </Dialog>
                 </div>
 
-                {/* Activity Feed Section */}
-                <div className="space-y-4">
-                    <div className="bg-[#1C1C1C] rounded-3xl p-6 border border-white/5 h-full">
-                        <h2 className="text-2xl font-bold text-white mb-6">Activity Feed</h2>
-                        <div className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar pr-2">
-                            {allTasks?.slice(0, 20).map((task) => (
-                                <div key={task._id} className="bg-[#252525] p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                                    <div className="flex justify-between items-start gap-2">
-                                        <div className="flex-1">
-                                            <p className="text-sm font-medium text-white line-clamp-2">{task.title}</p>
-                                            <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
-                                                <span className={`px-2 py-0.5 rounded-full ${task.status === 'done'
-                                                    ? 'bg-green-500/10 text-green-400'
-                                                    : 'bg-yellow-500/10 text-yellow-400'
-                                                    }`}>
-                                                    {task.status === 'done' ? 'Completed' : 'Pending'}
-                                                </span>
-                                                <span>•</span>
-                                                <span>{new Date(task.createdAt).toLocaleDateString()}</span>
-                                            </div>
-                                        </div>
+                {/* Recent Activity Section - Takes up 1 column */}
+                <div className="lg:col-span-1">
+                    <div className="bg-[#1C1C1C] rounded-3xl p-6 border border-white/5 h-full min-h-[400px]">
+                        <h2 className="text-2xl font-bold text-white mb-1">Recent Activity</h2>
+                        <p className="text-gray-500 text-sm mb-6">Latest task updates across all projects</p>
 
-                                    </div>
-                                    <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between text-xs">
-                                        <div className="flex items-center gap-1 text-gray-400">
-                                            <span>To:</span>
-                                            <div className="flex -space-x-2">
-                                                {(task.assigneesList && task.assigneesList.length > 0) ? (
-                                                    task.assigneesList.slice(0, 3).map((u: any) => (
-                                                        <div key={u._id} className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center text-[8px] text-blue-300 border border-[#252525]">
-                                                            {u.name?.charAt(0) ?? "?"}
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <span className="text-gray-500 italic">Unassigned</span>
+                        <div className="space-y-6 relative">
+                            {/* Timeline line */}
+                            <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-[#252525]" />
+
+                            {allTasks && allTasks.slice(0, 5).map((task: any) => (
+                                <div key={task._id} className="relative pl-8">
+                                    <div className={`absolute left-0 top-1.5 w-4 h-4 rounded-full border-2 border-[#1C1C1C] ${task.status === 'done' ? 'bg-white' : 'bg-gray-600'}`} />
+                                    <div className="text-sm text-white font-medium">{task.title}</div>
+                                    <div className="text-xs text-gray-500 mt-0.5">
+                                        {task.status === 'done' ? (
+                                            <>
+                                                Completed by {task.completedByUser?.name ?? task.completedByUser?.email?.split('@')[0] ?? 'Unknown'}
+                                                {task.completionNote && (
+                                                    <span className="text-gray-400 italic"> — "{task.completionNote}"</span>
                                                 )}
-                                                {task.assigneesList && task.assigneesList.length > 3 && (
-                                                    <div className="w-5 h-5 rounded-full bg-gray-500/20 flex items-center justify-center text-[8px] text-gray-300 border border-[#252525]">
-                                                        +{task.assigneesList.length - 3}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="text-gray-500">
-                                            {task.project?.name ?? "No Project"}
-                                        </div>
+                                            </>
+                                        ) : (
+                                            <>Created by {task.createdByUser?.name ?? task.createdByUser?.email?.split('@')[0] ?? 'Unknown'}</>
+                                        )}
+                                        {' • '}{new Date(task.status === 'done' && task.completedAt ? task.completedAt : task.createdAt).toLocaleDateString()}
                                     </div>
                                 </div>
                             ))}
+
                             {(!allTasks || allTasks.length === 0) && (
-                                <div className="text-center py-8 text-gray-500 text-sm">
-                                    No recent activity
-                                </div>
+                                <div className="text-gray-500 text-sm pl-8">No activity yet</div>
                             )}
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-        </TooltipProvider >
+
+            {/* Completion Note Modal */}
+            <Dialog open={completionModalOpen} onOpenChange={setCompletionModalOpen}>
+                <DialogContent className="bg-[#1C1C1C] border-white/10 text-white max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold">Complete Task</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="completion-note" className="text-gray-300">
+                                Add a note (optional)
+                            </Label>
+                            <Textarea
+                                id="completion-note"
+                                placeholder="What did you accomplish?"
+                                value={completionNote}
+                                onChange={(e) => setCompletionNote(e.target.value)}
+                                className="bg-[#252525] border-white/10 text-white placeholder:text-gray-500 min-h-[100px]"
+                            />
+                        </div>
+                        <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => setCompletionModalOpen(false)}
+                                className="flex-1 border-white/20 text-white hover:bg-white/10 hover:text-white"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleConfirmCompletion}
+                                disabled={isCompleting}
+                                className="flex-1 bg-white text-black hover:bg-gray-200"
+                            >
+                                {isCompleting ? "Completing..." : "Mark Complete"}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Reopen Note Modal */}
+            <Dialog open={reopenModalOpen} onOpenChange={setReopenModalOpen}>
+                <DialogContent className="bg-[#1C1C1C] border-white/10 text-white max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold">Reopen Task</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="reopen-note" className="text-gray-300">
+                                Reason for reopening (optional)
+                            </Label>
+                            <Textarea
+                                id="reopen-note"
+                                placeholder="Why is this task being reopened?"
+                                value={reopenNote}
+                                onChange={(e) => setReopenNote(e.target.value)}
+                                className="bg-[#252525] border-white/10 text-white placeholder:text-gray-500 min-h-[100px]"
+                            />
+                        </div>
+                        <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => setReopenModalOpen(false)}
+                                className="flex-1 border-white/20 text-white hover:bg-white/10 hover:text-white"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleConfirmReopen}
+                                disabled={isReopening}
+                                className="flex-1 bg-white text-black hover:bg-gray-200"
+                            >
+                                {isReopening ? "Reopening..." : "Reopen Task"}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Task Details Modal */}
+            <Dialog open={detailsModalOpen} onOpenChange={setDetailsModalOpen}>
+                <DialogContent className="bg-[#1C1C1C] border-white/10 text-white max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold">Task Details</DialogTitle>
+                    </DialogHeader>
+                    {selectedTask && (
+                        <div className="space-y-4 mt-4">
+                            <div>
+                                <h3 className="text-lg font-medium text-white">{selectedTask.title}</h3>
+                                <p className="text-sm text-gray-400">
+                                    Status: {selectedTask.status === 'done' ? 'Completed' : 'Pending'}
+                                </p>
+                            </div>
+
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Project:</span>
+                                    <span className="text-gray-300">{projects?.find((p: any) => p._id === selectedTask.projectId)?.name ?? "Unknown"}</span>
+                                </div>
+
+                                <div className="flex flex-col gap-2">
+                                    <span className="text-gray-500">Assigned To:</span>
+                                    <div className="flex flex-wrap gap-2 items-center">
+                                        {(selectedTask.assigneesList && selectedTask.assigneesList.length > 0) ? (
+                                            selectedTask.assigneesList.map((u: any) => (
+                                                <div key={u._id} className="bg-white/10 px-2 py-1 rounded text-xs flex items-center gap-1">
+                                                    {u.name ?? u.email}
+                                                    <button
+                                                        onClick={async () => {
+                                                            const newIds = selectedTask.assigneesList.filter((m: any) => m._id !== u._id).map((m: any) => m._id);
+                                                            await reassignTask({ taskId: selectedTask._id, assignees: newIds });
+                                                            // Optimistic update
+                                                            setSelectedTask((prev: any) => ({
+                                                                ...prev,
+                                                                assigneesList: prev.assigneesList.filter((m: any) => m._id !== u._id),
+                                                                assignedTo: newIds[0]
+                                                            }));
+                                                        }}
+                                                        className="hover:text-red-400"
+                                                    >
+                                                        <Plus className="w-3 h-3 rotate-45" />
+                                                    </button>
+                                                </div>
+                                            ))
+                                        ) : <span className="text-gray-500 italic">Unassigned</span>}
+
+                                        <Select value="" onValueChange={async (val) => {
+                                            const currentIds = selectedTask.assigneesList?.map((m: any) => m._id) || [];
+                                            if (!currentIds.includes(val)) {
+                                                const newIds = [...currentIds, val as Id<"users">];
+                                                await reassignTask({ taskId: selectedTask._id, assignees: newIds });
+                                                // Optimistic update
+                                                const newMember = teamMembers?.find(m => m._id === val);
+                                                setSelectedTask((prev: any) => ({
+                                                    ...prev,
+                                                    assigneesList: [...(prev.assigneesList || []), newMember],
+                                                    assignedTo: newIds[0]
+                                                }));
+                                            }
+                                        }}>
+                                            <SelectTrigger className="h-6 text-xs bg-transparent border-white/20 hover:bg-white/5 w-6 px-0 justify-center">
+                                                <Plus className="w-3 h-3" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-[#1C1C1C] border-white/10">
+                                                {teamMembers?.map(m => (
+                                                    <SelectItem key={m._id} value={m._id} disabled={selectedTask.assigneesList?.some((u: any) => u._id === m._id)}>
+                                                        {m.name ?? m.email}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Created:</span>
+                                    <span className="text-gray-300">{new Date(selectedTask.createdAt).toLocaleDateString()}</span>
+                                </div>
+
+                                {selectedTask.status === 'done' && (
+                                    <>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Completed By:</span>
+                                            <span className="text-gray-300">{selectedTask.completedByUser?.name ?? "Unknown"}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Completed At:</span>
+                                            <span className="text-gray-300">{new Date(selectedTask.completedAt).toLocaleDateString()}</span>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Image Grid */}
+                            {selectedTask.imageUrls && selectedTask.imageUrls.length > 0 && (
+                                <div className="space-y-2 mt-4 pt-4 border-t border-white/5">
+                                    <span className="text-sm text-gray-500 font-medium">Attachments</span>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {selectedTask.imageUrls.map((url: string, idx: number) => (
+                                            <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-black/50 relative group border border-white/10">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img
+                                                    src={url}
+                                                    alt="Task attachment"
+                                                    className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                                    onClick={() => window.open(url, '_blank')}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedTask.completionNote && (
+                                <div className="bg-[#252525] p-3 rounded-lg border border-white/5">
+                                    <p className="text-xs text-gray-500 mb-1 font-medium">COMPLETION NOTE</p>
+                                    <p className="text-sm text-gray-300 italic">"{selectedTask.completionNote}"</p>
+                                </div>
+                            )}
+
+                            {/* Task History / Notes */}
+                            {selectedTask.notes && selectedTask.notes.length > 0 && (
+                                <div className="space-y-3 pt-4 border-t border-white/5">
+                                    <h4 className="text-sm font-medium text-white">History</h4>
+                                    <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {selectedTask.notes.slice().reverse().map((note: any, index: number) => (
+                                            <div key={index} className="bg-[#252525] p-3 rounded-lg border border-white/5">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className="text-xs font-semibold text-gray-300">
+                                                        {teamMembers?.find(m => m._id === note.userId)?.name ?? "User"}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-500">
+                                                        {new Date(note.timestamp).toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-gray-400 mb-1 font-medium uppercase tracking-wider">
+                                                    {note.type === 'completion' ? 'COMPLETED' : note.type === 'reopen' ? 'REOPENED' : 'NOTE'}
+                                                </div>
+                                                <p className="text-sm text-gray-300">{note.content}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end pt-4 border-t border-white/10">
+                                <Button
+                                    variant="destructive"
+                                    onClick={async () => {
+                                        if (window.confirm("Are you sure you want to delete this task?")) {
+                                            try {
+                                                await deleteTask({ taskId: selectedTask._id });
+                                                toast.success("Task deleted successfully");
+                                                setDetailsModalOpen(false);
+                                            } catch (error: any) {
+                                                toast.error(error.message || "Failed to delete task");
+                                            }
+                                        }
+                                    }}
+                                    className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border-none w-full"
+                                >
+                                    Delete Task
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+        </TooltipProvider>
     );
 };
