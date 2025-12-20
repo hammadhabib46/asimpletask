@@ -38,6 +38,7 @@ export default function AdminDashboard() {
     const [projectFilter, setProjectFilter] = useState<string>("all");
     const [dateFilter, setDateFilter] = useState<string>("all");
     const [assignedToFilter, setAssignedToFilter] = useState<string>("all");
+    const [searchQuery, setSearchQuery] = useState("");
 
     // Task creation modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -106,6 +107,17 @@ export default function AdminDashboard() {
         assignedTo: assignedToFilter !== "all" ? (assignedToFilter as Id<"users">) : undefined,
         dateFrom: dateRange.from,
     });
+
+    const filteredTasks = useMemo(() => {
+        if (!allTasks) return [];
+        let tasks = [...allTasks];
+
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            tasks = tasks.filter((t: any) => t.title.toLowerCase().includes(query) || (t.project?.name || "").toLowerCase().includes(query));
+        }
+        return tasks;
+    }, [allTasks, searchQuery]);
 
     const handleCreateTask = async () => {
         if (!newTaskTitle.trim() || !newTaskProject || !currentUser) return;
@@ -262,296 +274,276 @@ export default function AdminDashboard() {
                     {/* Tasks Section - Takes up 2 columns */}
                     <div className="lg:col-span-2 space-y-4">
                         <div className="bg-[#1C1C1C] rounded-3xl p-6 border border-white/5">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                                <div className="flex flex-col gap-4">
-                                    <h2 className="text-2xl font-bold text-white">Tasks</h2>
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                                <h2 className="text-2xl font-bold text-white">Tasks</h2>
+                                <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline" className="rounded-full border-white/20 text-white hover:bg-white/10 hover:text-white h-8 text-xs">
+                                            <Plus className="w-3 h-3 mr-1" /> Create Task
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="bg-[#1C1C1C] border-white/10 text-white max-w-xl" onPaste={handlePaste}>
+                                        <DialogHeader>
+                                            <DialogTitle className="text-xl font-bold">Create New Task</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="space-y-4 mt-4">
+                                            {/* Task Title */}
+                                            <div className="space-y-2">
+                                                <Label htmlFor="task-title" className="text-gray-300">Task Title</Label>
+                                                <Input
+                                                    id="task-title"
+                                                    placeholder="Enter task title..."
+                                                    value={newTaskTitle}
+                                                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                                                    className="bg-[#252525] border-white/10 text-white placeholder:text-gray-500"
+                                                />
+                                            </div>
 
-                                    <div className="flex flex-col gap-6">
-                                        {/* Project Filter Pills */}
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Projects</label>
-                                            <div className="flex flex-wrap gap-2">
-                                                <button
-                                                    onClick={() => setProjectFilter("all")}
-                                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${projectFilter === "all"
-                                                        ? "bg-white text-black"
-                                                        : "bg-[#252525] text-gray-400 hover:bg-[#333] hover:text-white"
-                                                        }`}
+                                            {/* Project Selection */}
+                                            <div className="space-y-2">
+                                                <Label className="text-gray-300">Project *</Label>
+                                                <Select value={newTaskProject} onValueChange={setNewTaskProject}>
+                                                    <SelectTrigger className="bg-[#252525] border-white/10 text-white">
+                                                        <SelectValue placeholder="Select a project" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-[#1C1C1C] border-white/10">
+                                                        {projects?.map((project) => (
+                                                            <SelectItem key={project._id} value={project._id}>
+                                                                {project.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* Assignee Selection (Multi) */}
+                                            <div className="space-y-2">
+                                                <Label className="text-gray-300">Assign To (Optional)</Label>
+                                                <div className="flex flex-wrap gap-2 mb-2">
+                                                    {newTaskAssignees.map(id => {
+                                                        const member = teamMembers?.find(m => m._id === id);
+                                                        return (
+                                                            <div key={id} className="bg-white/10 text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                                                                {member?.name ?? "Unknown"}
+                                                                <button onClick={() => setNewTaskAssignees(prev => prev.filter(p => p !== id))} className="hover:text-red-400">
+                                                                    <Plus className="w-3 h-3 rotate-45" />
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <Select
+                                                    value=""
+                                                    onValueChange={(value) => {
+                                                        if (!newTaskAssignees.includes(value)) {
+                                                            setNewTaskAssignees(prev => [...prev, value]);
+                                                        }
+                                                    }}
                                                 >
-                                                    All
-                                                </button>
-                                                {projects?.map((project) => (
-                                                    <button
-                                                        key={project._id}
-                                                        onClick={() => setProjectFilter(project._id)}
-                                                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${projectFilter === project._id
-                                                            ? "bg-white text-black"
-                                                            : "bg-[#252525] text-gray-400 hover:bg-[#333] hover:text-white"
-                                                            }`}
-                                                    >
-                                                        {project.name}
-                                                    </button>
-                                                ))}
+                                                    <SelectTrigger className="bg-[#252525] border-white/10 text-white">
+                                                        <SelectValue placeholder="Add assignee" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-[#1C1C1C] border-white/10">
+                                                        {teamMembers?.map((member) => (
+                                                            <SelectItem key={member._id} value={member._id} disabled={newTaskAssignees.includes(member._id)}>
+                                                                {member.name ?? member.email}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
-                                        </div>
 
-                                        {/* Assigned To Filter Pills */}
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Assigned To</label>
-                                            <div className="flex flex-wrap gap-2">
-                                                <button
-                                                    onClick={() => setAssignedToFilter("all")}
-                                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${assignedToFilter === "all"
-                                                        ? "bg-white text-black"
-                                                        : "bg-[#252525] text-gray-400 hover:bg-[#333] hover:text-white"
-                                                        }`}
+                                            {/* Image Upload */}
+                                            <div className="space-y-2">
+                                                <Label className="text-gray-300">Images (Paste or Select)</Label>
+                                                <div
+                                                    className="border-2 border-dashed border-white/10 rounded-lg p-4 text-center hover:bg-white/5 transition-colors cursor-pointer"
+                                                    onPaste={handlePaste}
+                                                    onClick={() => document.getElementById('image-upload')?.click()}
                                                 >
-                                                    Everyone
-                                                </button>
-                                                {teamMembers?.map((member) => (
-                                                    <button
-                                                        key={member._id}
-                                                        onClick={() => setAssignedToFilter(member._id)}
-                                                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${assignedToFilter === member._id
-                                                            ? "bg-white text-black"
-                                                            : "bg-[#252525] text-gray-400 hover:bg-[#333] hover:text-white"
-                                                            }`}
-                                                    >
-                                                        {member.name ?? member.email}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Date Filter Pills */}
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</label>
-                                            <div className="flex flex-wrap gap-2">
-                                                <button onClick={() => setDateFilter("all")} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${dateFilter === "all" ? "bg-white text-black" : "bg-[#252525] text-gray-400 hover:bg-[#333] hover:text-white"}`}>All Time</button>
-                                                <button onClick={() => setDateFilter("7days")} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${dateFilter === "7days" ? "bg-white text-black" : "bg-[#252525] text-gray-400 hover:bg-[#333] hover:text-white"}`}>Last 7 Days</button>
-                                                <button onClick={() => setDateFilter("30days")} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${dateFilter === "30days" ? "bg-white text-black" : "bg-[#252525] text-gray-400 hover:bg-[#333] hover:text-white"}`}>Last 30 Days</button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Task Creation Modal */}
-                                    <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                                        <DialogTrigger asChild>
-                                            <Button variant="outline" className="rounded-full border-white/20 text-white hover:bg-white/10 hover:text-white h-8 text-xs">
-                                                <Plus className="w-3 h-3 mr-1" /> Task
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="bg-[#1C1C1C] border-white/10 text-white max-w-xl" onPaste={handlePaste}>
-                                            <DialogHeader>
-                                                <DialogTitle className="text-xl font-bold">Create New Task</DialogTitle>
-                                            </DialogHeader>
-                                            <div className="space-y-4 mt-4">
-                                                {/* Task Title */}
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="task-title" className="text-gray-300">Task Title</Label>
-                                                    <Input
-                                                        id="task-title"
-                                                        placeholder="Enter task title..."
-                                                        value={newTaskTitle}
-                                                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                                                        className="bg-[#252525] border-white/10 text-white placeholder:text-gray-500"
+                                                    <input
+                                                        type="file"
+                                                        id="image-upload"
+                                                        className="hidden"
+                                                        multiple
+                                                        accept="image/*"
+                                                        onChange={handleFileSelect}
                                                     />
+                                                    <p className="text-sm text-gray-500">
+                                                        Click to upload or press <kbd className="bg-white/10 px-1 rounded">Cmd/Ctrl + V</kbd> to paste
+                                                    </p>
                                                 </div>
 
-                                                {/* Project Selection */}
-                                                <div className="space-y-2">
-                                                    <Label className="text-gray-300">Project *</Label>
-                                                    <Select value={newTaskProject} onValueChange={setNewTaskProject}>
-                                                        <SelectTrigger className="bg-[#252525] border-white/10 text-white">
-                                                            <SelectValue placeholder="Select a project" />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="bg-[#1C1C1C] border-white/10">
-                                                            {projects?.map((project) => (
-                                                                <SelectItem key={project._id} value={project._id}>
-                                                                    {project.name}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-
-                                                {/* Assignee Selection (Multi) */}
-                                                <div className="space-y-2">
-                                                    <Label className="text-gray-300">Assign To (Optional)</Label>
-                                                    <div className="flex flex-wrap gap-2 mb-2">
-                                                        {newTaskAssignees.map(id => {
-                                                            const member = teamMembers?.find(m => m._id === id);
-                                                            return (
-                                                                <div key={id} className="bg-white/10 text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                                                                    {member?.name ?? "Unknown"}
-                                                                    <button onClick={() => setNewTaskAssignees(prev => prev.filter(p => p !== id))} className="hover:text-red-400">
-                                                                        <Plus className="w-3 h-3 rotate-45" />
-                                                                    </button>
-                                                                </div>
-                                                            );
-                                                        })}
+                                                {selectedImages.length > 0 && (
+                                                    <div className="grid grid-cols-4 gap-2 mt-2">
+                                                        {selectedImages.map((file, index) => (
+                                                            <div key={index} className="relative group aspect-square rounded-md overflow-hidden bg-black">
+                                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                <img
+                                                                    src={URL.createObjectURL(file)}
+                                                                    alt="preview"
+                                                                    className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+                                                                />
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        removeImage(index);
+                                                                    }}
+                                                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                >
+                                                                    <Plus className="w-3 h-3 rotate-45" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                    <Select
-                                                        value=""
-                                                        onValueChange={(value) => {
-                                                            if (!newTaskAssignees.includes(value)) {
-                                                                setNewTaskAssignees(prev => [...prev, value]);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <SelectTrigger className="bg-[#252525] border-white/10 text-white">
-                                                            <SelectValue placeholder="Add assignee" />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="bg-[#1C1C1C] border-white/10">
-                                                            {teamMembers?.map((member) => (
-                                                                <SelectItem key={member._id} value={member._id} disabled={newTaskAssignees.includes(member._id)}>
-                                                                    {member.name ?? member.email}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-
-                                                {/* Image Upload */}
-                                                <div className="space-y-2">
-                                                    <Label className="text-gray-300">Images (Paste or Select)</Label>
-                                                    <div
-                                                        className="border-2 border-dashed border-white/10 rounded-lg p-4 text-center hover:bg-white/5 transition-colors cursor-pointer"
-                                                        onPaste={handlePaste}
-                                                        onClick={() => document.getElementById('image-upload')?.click()}
-                                                    >
-                                                        <input
-                                                            type="file"
-                                                            id="image-upload"
-                                                            className="hidden"
-                                                            multiple
-                                                            accept="image/*"
-                                                            onChange={handleFileSelect}
-                                                        />
-                                                        <p className="text-sm text-gray-500">
-                                                            Click to upload or press <kbd className="bg-white/10 px-1 rounded">Cmd/Ctrl + V</kbd> to paste
-                                                        </p>
-                                                    </div>
-
-                                                    {selectedImages.length > 0 && (
-                                                        <div className="grid grid-cols-4 gap-2 mt-2">
-                                                            {selectedImages.map((file, index) => (
-                                                                <div key={index} className="relative group aspect-square rounded-md overflow-hidden bg-black">
-                                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                                    <img
-                                                                        src={URL.createObjectURL(file)}
-                                                                        alt="preview"
-                                                                        className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
-                                                                    />
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            removeImage(index);
-                                                                        }}
-                                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                    >
-                                                                        <Plus className="w-3 h-3 rotate-45" />
-                                                                    </button>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Create Button */}
-                                                <Button
-                                                    onClick={handleCreateTask}
-                                                    disabled={!newTaskTitle.trim() || !newTaskProject || isCreating}
-                                                    className="w-full bg-white text-black hover:bg-gray-200 mt-2"
-                                                >
-                                                    {isCreating ? "Creating..." : "Create Task"}
-                                                </Button>
+                                                )}
                                             </div>
-                                        </DialogContent>
-                                    </Dialog>
+
+                                            {/* Create Button */}
+                                            <Button
+                                                onClick={handleCreateTask}
+                                                disabled={!newTaskTitle.trim() || !newTaskProject || isCreating}
+                                                className="w-full bg-white text-black hover:bg-gray-200 mt-2"
+                                            >
+                                                {isCreating ? "Creating..." : "Create Task"}
+                                            </Button>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+
+                            {/* Toolbar: Search and Filters */}
+                            <div className="flex flex-wrap items-center gap-3 mb-6">
+                                {/* Search */}
+                                <Input
+                                    placeholder="Search tasks..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="h-9 text-sm bg-[#2A2A2A] text-white border border-white/10 rounded-md px-3 w-[200px] placeholder:text-gray-500 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                />
+
+                                {/* Project Filter */}
+                                <Select value={projectFilter} onValueChange={setProjectFilter}>
+                                    <SelectTrigger className="h-9 text-sm bg-[#2A2A2A] text-white border border-white/10 rounded-md px-3 w-[160px]">
+                                        <SelectValue placeholder="All Projects" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-[#1C1C1C] border-white/10">
+                                        <SelectItem value="all">All Projects</SelectItem>
+                                        {projects?.map((project) => (
+                                            <SelectItem key={project._id} value={project._id}>
+                                                {project.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {/* Assigned To Filter */}
+                                <Select value={assignedToFilter} onValueChange={setAssignedToFilter}>
+                                    <SelectTrigger className="h-9 text-sm bg-[#2A2A2A] text-white border border-white/10 rounded-md px-3 w-[160px]">
+                                        <SelectValue placeholder="Everyone" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-[#1C1C1C] border-white/10">
+                                        <SelectItem value="all">Everyone</SelectItem>
+                                        {teamMembers?.map((member) => (
+                                            <SelectItem key={member._id} value={member._id}>
+                                                {member.name ?? member.email}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {/* Date Filter */}
+                                <Select value={dateFilter} onValueChange={setDateFilter}>
+                                    <SelectTrigger className="h-9 text-sm bg-[#2A2A2A] text-white border border-white/10 rounded-md px-3 w-[140px]">
+                                        <SelectValue placeholder="All Time" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-[#1C1C1C] border-white/10">
+                                        <SelectItem value="all">All Time</SelectItem>
+                                        <SelectItem value="7days">Last 7 Days</SelectItem>
+                                        <SelectItem value="30days">Last 30 Days</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Custom Table Implementation to match mock */}
+                            <div className="w-full">
+                                <div className="hidden md:flex items-center gap-4 text-gray-400 text-sm font-medium mb-4 px-4">
+                                    <div className="w-8 shrink-0">Done</div>
+                                    <div className="w-24 shrink-0">Date</div>
+                                    <div className="flex-1 min-w-0">Task</div>
+                                    <div className="w-32 shrink-0">Assigned To</div>
+                                    <div className="w-24 shrink-0 text-right">Status</div>
                                 </div>
 
-                                {/* Custom Table Implementation to match mock */}
-                                <div className="w-full">
-                                    <div className="hidden md:flex items-center gap-4 text-gray-400 text-sm font-medium mb-4 px-4">
-                                        <div className="w-8 shrink-0">Done</div>
-                                        <div className="w-24 shrink-0">Date</div>
-                                        <div className="flex-1 min-w-0">Task</div>
-                                        <div className="w-32 shrink-0">Assigned To</div>
-                                        <div className="w-24 shrink-0 text-right">Status</div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        {allTasks && allTasks.length > 0 ? (
-                                            allTasks.slice(0, 8).map((task: any) => (
-                                                <div
-                                                    key={task._id}
-                                                    className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 bg-[#252525] hover:bg-[#2A2A2A] transition-colors p-4 rounded-xl text-sm group cursor-pointer"
-                                                    onClick={() => handleTaskClick(task)}
-                                                >
-                                                    <div className="flex items-center gap-3 md:contents">
-                                                        <div className="w-8 shrink-0 flex items-center justify-start" onClick={(e) => e.stopPropagation()}>
-                                                            <Checkbox
-                                                                checked={task.status === "done"}
-                                                                onCheckedChange={() =>
-                                                                    handleToggleStatus(task._id, task.status)
-                                                                }
-                                                                className="border-white/30 data-[state=checked]:bg-white data-[state=checked]:text-black"
-                                                            />
-                                                        </div>
-                                                        <div className="md:hidden flex-1 font-medium text-white truncate">
-                                                            {task.title}
-                                                        </div>
-                                                        <div className="md:hidden text-xs text-gray-500">
-                                                            {new Date(task.createdAt).toLocaleDateString()}
-                                                        </div>
+                                <div className="space-y-2">
+                                    {filteredTasks.length > 0 ? (
+                                        filteredTasks.map((task: any) => (
+                                            <div
+                                                key={task._id}
+                                                className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 bg-[#252525] hover:bg-[#2A2A2A] transition-colors p-4 rounded-xl text-sm group cursor-pointer"
+                                                onClick={() => handleTaskClick(task)}
+                                            >
+                                                <div className="flex items-center gap-3 md:contents">
+                                                    <div className="w-8 shrink-0 flex items-center justify-start" onClick={(e) => e.stopPropagation()}>
+                                                        <Checkbox
+                                                            checked={task.status === "done"}
+                                                            onCheckedChange={() =>
+                                                                handleToggleStatus(task._id, task.status)
+                                                            }
+                                                            className="border-white/30 data-[state=checked]:bg-white data-[state=checked]:text-black"
+                                                        />
                                                     </div>
-
-                                                    <div className="hidden md:block w-24 shrink-0 text-gray-400">
-                                                        {new Date(task.createdAt).toLocaleDateString(undefined, {
-                                                            day: 'numeric',
-                                                            month: 'numeric',
-                                                            year: 'numeric'
-                                                        })}
+                                                    <div className="md:hidden flex-1 font-medium text-white truncate">
+                                                        {task.title}
                                                     </div>
-                                                    <div className="hidden md:flex flex-1 min-w-0 items-center gap-2">
-                                                        <span className={`font-medium truncate ${task.status === 'done' ? 'line-through text-gray-500' : 'text-white'}`}>
-                                                            {task.title}
-                                                        </span>
-                                                        {task.status === 'done' && task.completionNote && (
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                                                                </TooltipTrigger>
-                                                                <TooltipContent className="bg-[#1C1C1C] border-white/10 text-white max-w-xs">
-                                                                    <p className="text-sm">{task.completionNote}</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        )}
-                                                    </div>
-                                                    <div className="hidden md:block w-32 shrink-0 text-gray-400 text-xs truncate">
-                                                        {task.assignedUser?.name ?? task.assignedUser?.email?.split('@')[0] ?? "Unassigned"}
-                                                    </div>
-                                                    <div className="pl-11 md:pl-0 flex items-center justify-between md:block w-full md:w-24 md:shrink-0 md:text-right">
-                                                        <span className="md:hidden text-gray-500 text-xs">
-                                                            {task.assignedUser?.name ?? task.assignedUser?.email?.split('@')[0] ?? "Unassigned"}
-                                                        </span>
-                                                        <span className={`text-xs md:text-sm ${task.status === 'done' ? "text-white" : "text-gray-500"}`}>
-                                                            {task.status === 'done' ? "Completed" : "Pending"}
-                                                        </span>
+                                                    <div className="md:hidden text-xs text-gray-500">
+                                                        {new Date(task.createdAt).toLocaleDateString()}
                                                     </div>
                                                 </div>
-                                            ))
-                                        ) : (
-                                            <div className="text-center py-12 text-gray-500">
-                                                No tasks found matching filters
+
+                                                <div className="hidden md:block w-24 shrink-0 text-gray-400">
+                                                    {new Date(task.createdAt).toLocaleDateString(undefined, {
+                                                        day: 'numeric',
+                                                        month: 'numeric',
+                                                        year: 'numeric'
+                                                    })}
+                                                </div>
+                                                <div className="hidden md:flex flex-1 min-w-0 items-center gap-2">
+                                                    <span className={`font-medium truncate ${task.status === 'done' ? 'line-through text-gray-500' : 'text-white'}`}>
+                                                        {task.title}
+                                                    </span>
+                                                    {task.status === 'done' && task.completionNote && (
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                                                            </TooltipTrigger>
+                                                            <TooltipContent className="bg-[#1C1C1C] border-white/10 text-white max-w-xs">
+                                                                <p className="text-sm">{task.completionNote}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    )}
+                                                </div>
+                                                <div className="hidden md:block w-32 shrink-0 text-gray-400 text-xs truncate">
+                                                    {task.assignedUser?.name ?? task.assignedUser?.email?.split('@')[0] ?? "Unassigned"}
+                                                </div>
+                                                <div className="pl-11 md:pl-0 flex items-center justify-between md:block w-full md:w-24 md:shrink-0 md:text-right">
+                                                    <span className="md:hidden text-gray-500 text-xs">
+                                                        {task.assignedUser?.name ?? task.assignedUser?.email?.split('@')[0] ?? "Unassigned"}
+                                                    </span>
+                                                    <span className={`text-xs md:text-sm ${task.status === 'done' ? "text-white" : "text-gray-500"}`}>
+                                                        {task.status === 'done' ? "Completed" : "Pending"}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        )}
-                                    </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-12 text-gray-500">
+                                            No tasks found matching filters
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
-
                     </div>
 
                     {/* Recent Activity Section - Takes up 1 column */}
@@ -907,6 +899,6 @@ export default function AdminDashboard() {
                     </DialogContent>
                 </Dialog>
             </div>
-        </TooltipProvider>
+        </TooltipProvider >
     );
 };
